@@ -1,0 +1,20 @@
+{
+    "venvPath": ".",
+    "venv": "venv",
+    "pythonVersion": "3.12",
+    "reportMissingImports": "none",
+    "reportMissingModuleSource": "none",
+    "typeCheckingMode": "basic",
+    "diagnosticSeverityOverrides": {
+        "reportGeneralTypeIssues": "none",
+        "reportOptionalMemberAccess": "none",
+        "reportOptionalSubscript": "none",
+        "reportOptionalIterable": "none",
+        "reportOptionalCall": "none",
+        "reportOptionalContextManager": "none",
+        "reportOptionalOperand": "none"
+    },
+    "extraPaths": [
+        "."
+    ]
+}

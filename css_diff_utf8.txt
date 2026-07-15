@@ -1,0 +1,159 @@
+﻿diff --git a/frontend/src/App.css b/frontend/src/App.css
+index df68c04..c5623d1 100644
+--- a/frontend/src/App.css
++++ b/frontend/src/App.css
+@@ -1308,6 +1308,119 @@ body {
+   transform: none;
+ }
+ 
++.pim-attr-btn {
++  width: 100%;
++  border: 0.0625rem solid #cbd5e1;
++  background: #f8fafc;
++  color: #1e3a5f;
++  border-radius: 0.5rem;
++  padding: 0.6rem 0.75rem;
++  font-weight: 700;
++  cursor: pointer;
++  font-size: 0.9rem;
++  transition: background 0.2s ease, border-color 0.2s ease;
++}
++
++.pim-attr-btn:hover {
++  background: #eef4ff;
++  border-color: #94a3b8;
++}
++
++.pim-attr-overlay {
++  position: fixed;
++  inset: 0;
++  background: rgba(15, 23, 42, 0.35);
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  z-index: 5000;
++  animation: fadeIn 0.15s ease;
++}
++
++.pim-attr-modal {
++  width: min(92vw, 34rem);
++  max-height: 80vh;
++  background: #ffffff;
++  border-radius: 0.9rem;
++  box-shadow: 0 1.25rem 3.25rem rgba(15, 23, 42, 0.25);
++  border: 0.0625rem solid #e2e8f0;
++  display: flex;
++  flex-direction: column;
++  overflow: hidden;
++}
++
++.pim-attr-header {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  padding: 0.9rem 1.1rem 0.65rem;
++  border-bottom: 0.0625rem solid #e2e8f0;
++}
++
++.pim-attr-title {
++  font-weight: 800;
++  color: #0f1d35;
++  font-size: 1.05rem;
++}
++
++.pim-attr-close {
++  border: none;
++  background: #f1f5f9;
++  color: #334155;
++  border-radius: 0.5rem;
++  padding: 0.35rem 0.7rem;
++  font-weight: 700;
++  cursor: pointer;
++}
++
++.pim-attr-close:hover {
++  background: #e2e8f0;
++}
++
++.pim-attr-subtitle {
++  padding: 0.5rem 1.1rem 0.75rem;
++  color: #64748b;
++  font-size: 0.85rem;
++  border-bottom: 0.0625rem solid #f1f5f9;
++}
++
++.pim-attr-list {
++  padding: 0.75rem 1.1rem 1rem;
++  overflow-y: auto;
++}
++
++.pim-attr-row {
++  display: grid;
++  grid-template-columns: 42% 58%;
++  gap: 0.75rem;
++  padding: 0.45rem 0;
++  border-bottom: 0.0625rem dashed #e2e8f0;
++}
++
++.pim-attr-row:last-child {
++  border-bottom: none;
++}
++
++.pim-attr-key {
++  font-weight: 700;
++  color: #0f1d35;
++  font-size: 0.85rem;
++  word-break: break-word;
++}
++
++.pim-attr-val {
++  color: #475569;
++  font-size: 0.85rem;
++  word-break: break-word;
++}
++
++.pim-attr-empty {
++  color: #94a3b8;
++  text-align: center;
++  padding: 1.5rem 0.5rem;
++  font-size: 0.9rem;
++}
++
+ .pim-view-title {
+   font-size: 1.15em;
+   font-weight: 800;
+@@ -1421,14 +1534,26 @@ body {
+ }
+ 
+ .section-tooltip {
+-  background: rgba(255, 255, 255, 0.9);
+-  border: 1px solid #1e3a5f;
+-  border-radius: 4px;
+-  color: #1e3a5f;
+-  font-weight: bold;
+-  padding: 4px 8px;
+-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+-}
++    background: rgba(255, 255, 255, 0.9);
++    border: 1px solid #1e3a5f;
++    border-radius: 4px;
++    color: #1e3a5f;
++    font-weight: bold;
++    padding: 4px 8px;
++    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
++  }
++
++  .lot-tooltip {
++    background: rgba(255, 255, 255, 0.75);
++    border: 1px solid rgba(15, 23, 42, 0.5);
++    border-radius: 4px;
++    color: #0f1d35;
++    font-weight: 800;
++    font-size: 11px;
++    padding: 2px 4px;
++    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
++    pointer-events: none;
++  }
+ 
+ /* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+    CAD MAP

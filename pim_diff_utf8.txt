@@ -1,0 +1,331 @@
+﻿commit 040e8eb13c8c9afe6585abb2a843b6d0dccc59ce
+Author: ChilliRage <padillaidris97@gmail.com>
+Date:   Mon Mar 30 11:37:56 2026 +0800
+
+    computation and pin number
+
+diff --git a/frontend/src/PimView.jsx b/frontend/src/PimView.jsx
+index c72d14c..9f184e4 100644
+--- a/frontend/src/PimView.jsx
++++ b/frontend/src/PimView.jsx
+@@ -35,6 +35,7 @@ export default function PimView({ isStaff, geoData, onHeaderTitleChange }) {
+     const [showBarangayPanel, setShowBarangayPanel] = useState(true);
+     const [showDetailsPanel, setShowDetailsPanel] = useState(true);
+     const [mapInstance, setMapInstance] = useState(null);
++    const [showAttrModal, setShowAttrModal] = useState(false);
+ 
+     // Caching and Loading States
+     const barangayDataCache = useRef({});
+@@ -250,37 +251,167 @@ export default function PimView({ isStaff, geoData, onHeaderTitleChange }) {
+         return Number(val);
+     };
+ 
++    const lotProp = (key) => {
++        if (!selectedLot?.properties || !key) return undefined;
++        if (selectedLot.properties[key] !== undefined) return selectedLot.properties[key];
++        const lowerKey = String(key).toLowerCase();
++        const matchKey = Object.keys(selectedLot.properties).find(k => String(k).toLowerCase() === lowerKey);
++        return matchKey ? selectedLot.properties[matchKey] : undefined;
++    };
++
+     const computedTax = useMemo(() => {
+         if (!selectedLot || !selectedLot.properties) return null;
+         const p = selectedLot.properties;
+-        const canUseRRW = safeNum(p.area_rrw) > 0;
+-        const adjustmentRate = (refinementLevel === 0.50 && !canUseRRW) ? 0.75 : refinementLevel;
+-
+-        let unitValue = 1000;
+-        let assessmentLevel = 0.20;
+-
+-        if (safeNum(p.area_comml) > 0) {
+-            unitValue = 2500;
+-            assessmentLevel = 0.50;
+-        } else if (safeNum(p.area_indl) > 0) {
+-            unitValue = 3000;
+-            assessmentLevel = 0.50;
+-        } else if (safeNum(p.area_agri) > 0) {
+-            unitValue = 500;
+-            assessmentLevel = 0.40;
++
++        const getNumberProp = (keys) => {
++            for (const key of keys) {
++                const val = lotProp(key);
++                if (val !== undefined && val !== null && val !== '') {
++                    const num = Number(val);
++                    if (!Number.isNaN(num)) return num;
++                }
++            }
++            return 0;
++        };
++
++        const baseAdjustment = (refinementLevel === 0.5 || refinementLevel === 0.75) ? refinementLevel : 0.75;
++
++        const classes = [
++            {
++                key: 'res',
++                label: 'Residential',
++                areaKeys: ['area_res', 'area_resi', 'area_residential'],
++                assessmentLevel: 0.05
++            },
++            {
++                key: 'agri',
++                label: 'Agricultural',
++                areaKeys: ['area_agri', 'area_agriculture', 'area_agricultural'],
++                assessmentLevel: 0.06
++            },
++            {
++                key: 'comml',
++                label: 'Commercial',
++                areaKeys: ['area_comml', 'area_comm', 'area_commercial'],
++                assessmentLevel: 0.25
++            },
++            {
++                key: 'indl',
++                label: 'Industrial',
++                areaKeys: ['area_indl', 'area_ind', 'area_industrial'],
++                assessmentLevel: 0.45
++            },
++            {
++                key: 'rrw',
++                label: 'RRW',
++                areaKeys: ['area_rrw'],
++                assessmentLevel: getNumberProp(['assessment_rrw', 'assessment_level_rrw']) || 0
++            },
++            {
++                key: 'exempt',
++                label: 'Exempt',
++                areaKeys: ['area_exempt'],
++                assessmentLevel: 0
++            }
++        ];
++
++        const genericArea = getNumberProp(['area', 'land_area', 'lot_area']);
++        const genericUnit = getNumberProp(['unit_value', 'unit_value_sqm', 'unit_val', 'unitvalue', 'unit_value_sq_m', 'unit_value_sq_m.']);
++        const landUse = String(lotProp('land_use') || lotProp('landuse') || lotProp('classification') || '').toLowerCase();
++
++        let totalClassArea = 0;
++        const perClass = classes.map(cls => {
++            const area = getNumberProp(cls.areaKeys);
++            totalClassArea += area;
++            return { ...cls, area };
++        });
++
++        if (totalClassArea === 0 && genericArea > 0) {
++            const match = perClass.find(cls => landUse.includes(cls.key) || landUse.includes(cls.label.toLowerCase()));
++            if (match) {
++                match.area = genericArea;
++                totalClassArea = genericArea;
++            }
+         }
+ 
+-        const totalArea = safeNum(p.area_res) + safeNum(p.area_agri) + safeNum(p.area_indl) + safeNum(p.area_comml);
+-        const marketValue = totalArea * unitValue * adjustmentRate;
+-        const assessedValue = marketValue * assessmentLevel;
+-        const rpt = assessedValue * 0.02;
++        const unitValue = genericUnit;
++
++        const computed = perClass
++            .map(cls => {
++                if (cls.area <= 0) return null;
++                const adjustment = cls.key === 'rrw' ? 0.20 : baseAdjustment;
++                const marketValue = cls.area * unitValue * adjustment;
++                const assessedValue = marketValue * cls.assessmentLevel;
++                return {
++                    key: cls.key,
++                    label: cls.label,
++                    area: cls.area,
++                    unitValue,
++                    adjustment,
++                    assessmentLevel: cls.assessmentLevel,
++                    marketValue,
++                    assessedValue
++                };
++            })
++            .filter(Boolean);
++
++        const totalArea = computed.reduce((sum, c) => sum + c.area, 0);
++        const totalMarketValue = computed.reduce((sum, c) => sum + c.marketValue, 0);
++        const totalAssessedValue = computed.reduce((sum, c) => sum + c.assessedValue, 0);
++        const taxRate = 0.02;
++        const rpt = totalAssessedValue * taxRate;
+ 
+         return {
+-            adjustmentRate, unitValue, assessmentLevel, taxRate: 0.02,
+-            totalArea, marketValue, assessedValue, rpt
++            perClass: computed,
++            totalArea,
++            totalMarketValue,
++            totalAssessedValue,
++            taxRate,
++            rpt,
++            baseAdjustment
+         };
+     }, [selectedLot, refinementLevel]);
+ 
++    const areaBreakdown = useMemo(() => {
++        if (!computedTax?.perClass?.length) return [];
++        return computedTax.perClass.map(item => ({
++            key: item.key,
++            label: `Area ${item.label}`,
++            value: item.area
++        }));
++    }, [computedTax]);
++
++    const formatMoney = (val) => {
++        const num = safeNum(val);
++        return `Γé▒${num.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
++    };
++
++    const lotAttributeEntries = useMemo(() => {
++        if (!selectedLot?.properties) return [];
++        const grouped = new Map();
++        for (const [rawKey, rawVal] of Object.entries(selectedLot.properties)) {
++            if (!rawKey) continue;
++            const lowerKey = String(rawKey).toLowerCase();
++            if (lowerKey === 'geom') continue;
++
++            const displayKey = lowerKey === 'pin' ? 'PIN' : String(rawKey);
++            const valueStr = (rawVal === null || rawVal === undefined || rawVal === '') ? '' : String(rawVal);
++
++            if (!grouped.has(lowerKey)) {
++                grouped.set(lowerKey, { key: displayKey, values: new Set(valueStr ? [valueStr] : []) });
++            } else if (valueStr) {
++                grouped.get(lowerKey).values.add(valueStr);
++            }
++        }
++
++        return Array.from(grouped.values())
++            .map(item => {
++                const values = Array.from(item.values);
++                return [item.key, values.length ? values.join(' | ') : 'N/A'];
++            })
++            .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
++    }, [selectedLot]);
++
+     return (
+         <div className="pim-layout" style={{ height: '100%', display: 'flex', position: 'relative' }}>
+             {/* LEFT: Barangay Filter Panel */}
+@@ -404,33 +535,61 @@ export default function PimView({ isStaff, geoData, onHeaderTitleChange }) {
+                                             ))}
+                                         </select>
+                                     </div>
++                                    <div className="lot-detail-field full">
++                                        <button
++                                            type="button"
++                                            className="pim-attr-btn"
++                                            onClick={() => setShowAttrModal(true)}
++                                        >
++                                            View All Attributes
++                                        </button>
++                                    </div>
+                                     <div className="lot-detail-field-half"><label>BARANGAY</label><div className="lot-val-box">{selectedBarangay}</div></div>
+                                     <div className="lot-detail-field-half"><label>SECTION #</label><div className="lot-val-box">Section {selectedSection}</div></div>
+-                                    <div className="lot-detail-card"><label>OWNER</label><div className="lot-card-val">{selectedLot.properties?.owner || 'N/A'}</div></div>
+-                                    <div className="lot-detail-card"><label>PIN</label><div className="lot-card-val highlight">{selectedLot.properties?.pin || 'N/A'}</div></div>
+-                                    <div className="lot-detail-card full"><label>ADDRESS</label><div className="lot-card-val small">{selectedLot.properties?.address || `Lot ${String(selectedLot.properties?.pin || '').split('-').pop() || '?'}, Sec. ${selectedSection}, Brgy. ${selectedBarangay}, San Pascual, Batangas`}</div></div>
+-                                    <div className="lot-detail-card"><label>LAND USE</label><div className="lot-card-val landuse">
+-                                        {(() => {
+-                                            const p = selectedLot.properties;
+-                                            const uses = [];
+-                                            if (safeNum(p.area_res) > 0) uses.push('Residential');
+-                                            if (safeNum(p.area_agri) > 0) uses.push('Agricultural');
+-                                            if (safeNum(p.area_comml) > 0) uses.push('Commercial');
+-                                            if (safeNum(p.area_indl) > 0) uses.push('Industrial');
+-                                            return uses.join(', ') || 'Rural/Open';
+-                                        })()}
+-                                    </div></div>
+-                                    <div className="lot-detail-card"><label>ARP NO.</label><div className="lot-card-val">{selectedLot.properties?.arp_no || 'N/A'}</div></div>
+-                                    <div className="lot-detail-card"><label>AREA PER SQM</label><div className="lot-card-val">{computedTax?.totalArea?.toFixed(2) || '0.00'} sqm</div></div>
+-                                    <div className="lot-detail-card full specialty"><label>ADJUSTMENT LEVEL</label>
++                                    <div className="lot-detail-card"><label>PIN</label><div className="lot-card-val highlight">{lotProp('pin') || 'N/A'}</div></div>
++                                    <div className="lot-detail-card"><label>ARP NO.</label><div className="lot-card-val">{lotProp('arp_no') || 'N/A'}</div></div>
++                                    <div className="lot-detail-card"><label>NAME OF OWNER</label><div className="lot-card-val">{lotProp('owner') || 'N/A'}</div></div>
++                                    <div className="lot-detail-card full"><label>ADDRESS OF OWNER</label><div className="lot-card-val small">{lotProp('address') || `Lot ${String(lotProp('pin') || '').split('-').pop() || '?'}, Sec. ${selectedSection}, Brgy. ${selectedBarangay}, San Pascual, Batangas`}</div></div>
++                                    <div className="lot-detail-card"><label>PREVIOUS ARP NO.</label><div className="lot-card-val">{lotProp('prev_arp_no') || lotProp('previous_arp_no') || lotProp('previous_arp') || 'N/A'}</div></div>
++                                    <div className="lot-detail-card full"><label>AREA (SQM)</label>
++                                        <div className="lot-card-val">
++                                            {areaBreakdown.length > 0 ? (
++                                                <div>
++                                                    {areaBreakdown.map(item => (
++                                                        <div key={item.key}>{item.label}: {item.value.toFixed(2)} sqm</div>
++                                                    ))}
++                                                </div>
++                                            ) : (
++                                                <div>{computedTax?.totalArea ? `${computedTax.totalArea.toFixed(2)} sqm` : 'N/A'}</div>
++                                            )}
++                                        </div>
++                                    </div>
++                                    <div className="lot-detail-card full specialty"><label>DIRT ROAD ACCESS (ADJUSTMENT)</label>
+                                         <div className="adj-buttons">
+-                                            <button className={refinementLevel === 0.75 ? 'active' : ''} onClick={() => setRefinementLevel(0.75)}>75%</button>
+-                                            <button className={refinementLevel === 0.85 ? 'active' : ''} onClick={() => setRefinementLevel(0.85)}>85%</button>
+-                                            {safeNum(selectedLot.properties.area_rrw) > 0 && <button className={refinementLevel === 0.50 ? 'active' : ''} onClick={() => setRefinementLevel(0.50)}>50% (RRW)</button>}
++                                            <button className={refinementLevel === 0.75 ? 'active' : ''} onClick={() => setRefinementLevel(0.75)}>With Access (0.75)</button>
++                                            <button className={refinementLevel === 0.50 ? 'active' : ''} onClick={() => setRefinementLevel(0.50)}>No Access (0.50)</button>
+                                         </div>
+                                     </div>
+-                                    <div className="lot-detail-card highlight-green"><label>MARKET VALUE</label><div className="lot-card-val primary">Γé▒{computedTax?.marketValue?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</div></div>
+-                                    <div className="lot-detail-card highlight-navy"><label>RPT</label><div className="lot-card-val secondary">Γé▒{computedTax?.rpt?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</div></div>
++                                    {computedTax?.perClass?.length > 1 && (
++                                        <div className="lot-detail-card full">
++                                            <label>PER-CLASS COMPUTATION</label>
++                                            <div className="lot-card-val">
++                                                {computedTax.perClass.map(item => (
++                                                    <div key={item.key} style={{ marginBottom: '0.5rem' }}>
++                                                        <div style={{ fontWeight: 800 }}>{item.label}</div>
++                                                        <div>Market Value: {formatMoney(item.marketValue)}</div>
++                                                        <div>Assessed Value: {formatMoney(item.assessedValue)}</div>
++                                                        <div>Assessment Level: {(item.assessmentLevel * 100).toFixed(0)}%</div>
++                                                    </div>
++                                                ))}
++                                            </div>
++                                        </div>
++                                    )}
++                                    {computedTax?.perClass?.length <= 1 && (
++                                        <div className="lot-detail-card highlight-green"><label>MARKET VALUE</label><div className="lot-card-val primary">{formatMoney(lotProp('market_value') ?? computedTax?.totalMarketValue)}</div></div>
++                                    )}
++                                    <div className="lot-detail-card"><label>TOTAL ASSESSED VALUE</label><div className="lot-card-val">{formatMoney(lotProp('assessed_value') ?? lotProp('assessment_value') ?? computedTax?.totalAssessedValue)}</div></div>
++                                    <div className="lot-detail-card highlight-navy"><label>REAL PROPERTY TAX (RPT)</label><div className="lot-card-val secondary">{formatMoney(lotProp('rpt') ?? computedTax?.rpt)}</div></div>
+                                     {selectedLot?.properties?.has_enlargement && (
+                                         <div className="lot-enlargement-box">
+                                             <p className="enlarge-text">Shape mismatch detected. Enlargement available.</p>
+@@ -517,6 +676,39 @@ export default function PimView({ isStaff, geoData, onHeaderTitleChange }) {
+         .enlarge-btn:hover { background: #d97706; }
+       `
+             }} />
++
++            {showAttrModal && selectedLot && (
++                <div className="pim-attr-overlay" onClick={() => setShowAttrModal(false)}>
++                    <div className="pim-attr-modal" onClick={(e) => e.stopPropagation()}>
++                        <div className="pim-attr-header">
++                            <div className="pim-attr-title">Lot Attributes</div>
++                            <button className="pim-attr-close" onClick={() => setShowAttrModal(false)} type="button">Close</button>
++                        </div>
++                        <div className="pim-attr-subtitle">
++                            {selectedLot?.properties?.pin ? `PIN: ${selectedLot.properties.pin}` : 'Selected Lot'}
++                        </div>
++                        <div className="pim-attr-list">
++                            {lotAttributeEntries.length === 0 && (
++                                <div className="pim-attr-empty">No attributes available.</div>
++                            )}
++                            {lotAttributeEntries.map(([key, value]) => {
++                                let displayValue = value;
++                                if (displayValue === null || displayValue === undefined || displayValue === '') {
++                                    displayValue = 'N/A';
++                                } else if (typeof displayValue === 'object') {
++                                    displayValue = JSON.stringify(displayValue);
++                                }
++                                return (
++                                    <div className="pim-attr-row" key={key}>
++                                        <div className="pim-attr-key">{String(key)}</div>
++                                        <div className="pim-attr-val">{String(displayValue)}</div>
++                                    </div>
++                                );
++                            })}
++                        </div>
++                    </div>
++                </div>
++            )}
+         </div>
+     );
+ }

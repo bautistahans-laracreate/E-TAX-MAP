@@ -1,0 +1,11 @@
+django
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+geopandas
+pandas
+pyogrio
+rtree
+pyproj
+shapely
+psycopg[binary]

@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    container_name: taxfiling-postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: taxfiling
+      POSTGRES_USER: taxuser
+      POSTGRES_PASSWORD: pops1245
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taxuser -d taxfiling"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: taxfiling-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+volumes:
+  postgis_data:
